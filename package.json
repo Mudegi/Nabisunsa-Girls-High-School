@@ -16,7 +16,7 @@
     "expo-asset": "^11.0.5",
     "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.8",
-    "expo-dev-client": "^55.0.10",
+    "expo-dev-client": "^5.0.20",
     "expo-file-system": "~18.0.12",
     "expo-image-manipulator": "~13.0.5",
     "expo-image-picker": "~16.0.6",
