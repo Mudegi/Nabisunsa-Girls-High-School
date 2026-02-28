@@ -1,0 +1,173 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ════════════════════════════════════════════
+    //  Helper functions
+    // ════════════════════════════════════════════
+
+    // Authenticated user's profile document
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isRole(role) {
+      return isSignedIn() && userDoc().role == role;
+    }
+
+    function isAnyRole(roles) {
+      return isSignedIn() && userDoc().role in roles;
+    }
+
+    // Does the caller belong to the same school as the resource?
+    function sameSchool(schoolId) {
+      return isSignedIn() && userDoc().schoolId == schoolId;
+    }
+
+    // Is the caller a parent whose childIds array contains a given studentId?
+    function isParentOf(studentId) {
+      return isRole('parent') && studentId in userDoc().childIds;
+    }
+
+    // ════════════════════════════════════════════
+    //  /users/{userId}
+    // ════════════════════════════════════════════
+    match /users/{userId} {
+
+      // Anyone can read their OWN profile
+      // Admins & teachers can read profiles in their school
+      // Parents can read their children's profiles
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId
+        || (isAnyRole(['admin', 'teacher']) && sameSchool(resource.data.schoolId))
+        || isParentOf(userId)
+      );
+
+      // Users can update their own non-role fields
+      // Admins can update any user in their school
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'schoolId']))
+        || (isRole('admin') && sameSchool(resource.data.schoolId))
+      );
+
+      // Only admins can create users in their own school
+      allow create: if isRole('admin')
+        && request.resource.data.schoolId == userDoc().schoolId;
+
+      // Only admins can delete users in their school
+      allow delete: if isRole('admin')
+        && sameSchool(resource.data.schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  /schools/{schoolId}
+    // ════════════════════════════════════════════
+    match /schools/{schoolId} {
+
+      // Any authenticated member of the school can read
+      allow read: if sameSchool(schoolId);
+
+      // Only admins of that school can write
+      allow write: if isRole('admin') && sameSchool(schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  /assignments/{assignmentId}
+    // ════════════════════════════════════════════
+    match /assignments/{assignmentId} {
+
+      // Teachers, students, and admins in the same school can read
+      allow read: if isAnyRole(['admin', 'teacher', 'student'])
+        && sameSchool(resource.data.schoolId);
+
+      // Parents can read assignments linked to their child's school
+      allow read: if isRole('parent')
+        && sameSchool(resource.data.schoolId);
+
+      // Only admins and teachers in the same school can create/update
+      allow create: if isAnyRole(['admin', 'teacher'])
+        && request.resource.data.schoolId == userDoc().schoolId;
+
+      allow update: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId)
+        // schoolId cannot be changed after creation
+        && request.resource.data.schoolId == resource.data.schoolId;
+
+      allow delete: if isRole('admin')
+        && sameSchool(resource.data.schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  /marks/{markId}
+    //  KEY RULE: Parents can ONLY see their own
+    //  child's marks. Teachers see only their school.
+    // ════════════════════════════════════════════
+    match /marks/{markId} {
+
+      // Admins & teachers → must be in the same school
+      allow read: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId);
+
+      // Students → can only read their own marks
+      allow read: if isRole('student')
+        && resource.data.studentId == request.auth.uid;
+
+      // Parents → can ONLY read marks for their child(ren)
+      allow read: if isParentOf(resource.data.studentId);
+
+      // Teachers & admins in the same school can create/update marks
+      allow create: if isAnyRole(['admin', 'teacher'])
+        && request.resource.data.schoolId == userDoc().schoolId;
+
+      allow update: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId)
+        && request.resource.data.schoolId == resource.data.schoolId;
+
+      allow delete: if isRole('admin')
+        && sameSchool(resource.data.schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  /submissions/{submissionId}
+    //  Students create. Teachers in same school
+    //  can read & grade. Students see only their own.
+    // ════════════════════════════════════════════
+    match /submissions/{submissionId} {
+
+      // Students can read their own submissions
+      allow read: if isRole('student')
+        && resource.data.studentId == request.auth.uid;
+
+      // Teachers & admins in the same school can read all submissions
+      allow read: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId);
+
+      // Students can create a submission (for their own ID, their school)
+      allow create: if isRole('student')
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.schoolId == userDoc().schoolId;
+
+      // Teachers/admins can update (grade) submissions in their school
+      allow update: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId)
+        // Only score, gradedBy, gradedAt may change
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['score', 'gradedBy', 'gradedAt']);
+
+      allow delete: if isRole('admin')
+        && sameSchool(resource.data.schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  Deny everything else by default
+    // ════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
