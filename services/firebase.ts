@@ -5,12 +5,9 @@
 // For security, move these to environment variables before production.
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  initializeAuth,
-  getAuth,
-  // @ts-ignore – exported from the RN entry point at runtime
-  getReactNativePersistence,
-} from 'firebase/auth';
+import { initializeAuth, getAuth } from 'firebase/auth';
+// @ts-ignore – exported from the React Native entry point at runtime
+import { getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
