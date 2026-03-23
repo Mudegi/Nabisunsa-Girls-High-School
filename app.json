@@ -36,7 +36,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "e274f660-fd88-4fab-a63e-946e0994c8d3"
       }
-    }
+    },
+    "owner": "kissa-kian"
   }
 }
