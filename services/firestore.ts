@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// NafAcademy – Firestore helpers (multi-tenant)
+// Nabisunsa Girls HS – Firestore helpers
 // ──────────────────────────────────────────────
 import {
   collection,
@@ -22,6 +22,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { SCHOOL_ID, SCHOOL_NAME } from '@/constants';
 import type {
   AppUser,
   School,
@@ -564,4 +565,20 @@ export async function addProjectFile(
     data
   );
   return ref.id;
+}
+
+// ── School bootstrap ───────────────────────────
+
+/** Ensure the single school doc exists in Firestore */
+export async function ensureSchoolExists(): Promise<void> {
+  const snap = await getDoc(doc(db, 'schools', SCHOOL_ID));
+  if (!snap.exists()) {
+    await setDoc(doc(db, 'schools', SCHOOL_ID), {
+      name: SCHOOL_NAME,
+      curriculum: 'A-Level',
+      subjects: [],
+      active: true,
+      createdAt: Date.now(),
+    });
+  }
 }

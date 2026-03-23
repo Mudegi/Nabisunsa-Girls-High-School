@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "NafAcademy",
-    "slug": "NafAcademy",
+    "name": "Nabisunsa Girls HS",
+    "slug": "nabisunsa-girls-hs",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "nafacademy",
+    "scheme": "nabisunsa",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nafacademy.app"
+      "bundleIdentifier": "com.nabisunsa.app"
     },
     "android": {
-      "package": "com.nafacademy.app",
+      "package": "com.nabisunsa.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -36,9 +36,6 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "a27fff3a-c41c-4c08-9c4f-4b368937d04c"
       }
     }
   }

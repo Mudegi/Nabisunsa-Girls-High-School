@@ -9,12 +9,9 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Alert,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/hooks/useAuth';
 import { useChildSwitcher } from '@/hooks/useChildSwitcher';
 import {
@@ -23,7 +20,7 @@ import {
   getSubmissionsByStudent,
   onUserNotifications,
 } from '@/services/firestore';
-import { COLORS, EA_GRADE_SCALE } from '@/constants';
+import { COLORS, EA_GRADE_SCALE, SCHOOL_NAME } from '@/constants';
 import type { Assignment, Mark, AppNotification } from '@/types';
 
 function gradeFromPct(pct: number) {
@@ -117,25 +114,8 @@ export default function DashboardScreen() {
         Welcome, {profile?.displayName ?? 'User'} 👋
       </Text>
       <Text style={styles.role}>
-        {profile?.role?.toUpperCase()} • {schoolId}
+        {profile?.role?.toUpperCase()} • {SCHOOL_NAME}
       </Text>
-
-      {/* Admin: School ID card for sharing */}
-      {isTeacherOrAdmin && schoolId && (
-        <Pressable
-          style={styles.schoolIdCard}
-          onPress={async () => {
-            await Clipboard.setStringAsync(schoolId);
-            Alert.alert('Copied!', 'School ID copied to clipboard. Share it with your teachers and students so they can register.');
-          }}
-        >
-          <View>
-            <Text style={styles.schoolIdLabel}>Your School ID</Text>
-            <Text style={styles.schoolIdValue}>{schoolId}</Text>
-          </View>
-          <Ionicons name="copy-outline" size={22} color={COLORS.primary} />
-        </Pressable>
-      )}
 
       {/* Admin setup checklist */}
       {hasRole('admin') && (
@@ -288,20 +268,6 @@ const styles = StyleSheet.create({
 
   greeting: { fontSize: 22, fontWeight: '700', color: COLORS.text },
   role: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4 },
-
-  schoolIdCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.primary + '10',
-    borderWidth: 1,
-    borderColor: COLORS.primary + '30',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 14,
-  },
-  schoolIdLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '500' },
-  schoolIdValue: { fontSize: 16, fontWeight: '700', color: COLORS.primary, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
   setupCard: {
     flexDirection: 'row',

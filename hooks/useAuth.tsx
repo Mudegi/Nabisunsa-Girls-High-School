@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// NafAcademy – useAuth hook (RBAC)
+// Nabisunsa Girls HS – useAuth hook (RBAC)
 // ──────────────────────────────────────────────
 import { useEffect, useState, useCallback, useMemo, createContext, useContext } from 'react';
 import {
@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import { getUser, setUser } from '@/services/firestore';
+import { SCHOOL_ID } from '@/constants';
 import type { AppUser, UserRole } from '@/types';
 
 // ── Context ────────────────────────────────────
@@ -30,15 +31,14 @@ interface AuthContextValue {
     password: string,
     displayName: string,
     role: UserRole,
-    schoolId: string,
     childIds?: string[]
   ) => Promise<void>;
   /** Sign out and clear state */
   signOut: () => Promise<void>;
   /** Check if the current user has one of the given roles */
   hasRole: (...roles: UserRole[]) => boolean;
-  /** Convenience: the current user's school ID */
-  schoolId: string | null;
+  /** Convenience: the school ID (always Nabisunsa) */
+  schoolId: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string,
       displayName: string,
       role: UserRole,
-      schoolId: string,
       childIds?: string[]
     ) => {
       setLoading(true);
@@ -94,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           displayName,
           role,
-          schoolId,
+          schoolId: SCHOOL_ID,
           createdAt: Date.now(),
           ...(role === 'parent' && childIds ? { childIds } : {}),
         };
@@ -122,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [profile]
   );
 
-  const schoolId = profile?.schoolId ?? null;
+  const schoolId = SCHOOL_ID;
 
   const value = useMemo<AuthContextValue>(
     () => ({

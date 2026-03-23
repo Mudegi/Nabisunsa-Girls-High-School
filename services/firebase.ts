@@ -22,17 +22,18 @@ const firebaseConfig = {
 };
 
 /** Singleton Firebase app */
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const alreadyInitialised = getApps().length > 0;
+const app = alreadyInitialised ? getApp() : initializeApp(firebaseConfig);
 
 /**
  * Auth – Uses AsyncStorage-backed persistence so login
  * survives app restarts on React Native / Expo Go.
  */
-export const auth = getApps().length === 0
-  ? initializeAuth(app, {
+export const auth = alreadyInitialised
+  ? getAuth(app)
+  : initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
-    })
-  : getAuth(app);
+    });
 
 /** Firestore database */
 export const db = getFirestore(app);

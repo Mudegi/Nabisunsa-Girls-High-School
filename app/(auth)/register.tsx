@@ -1,8 +1,5 @@
 // ──────────────────────────────────────────────
-// NafAcademy – Registration Screen
-// ──────────────────────────────────────────────
-// Supports Admin (creates school), Teacher,
-// Student, and Parent registration.
+// Nabisunsa Girls HS – Registration Screen
 // ──────────────────────────────────────────────
 import { useState } from 'react';
 import {
@@ -20,15 +17,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
-import { COLORS } from '@/constants';
+import { COLORS, SCHOOL_NAME } from '@/constants';
 import type { UserRole } from '@/types';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/services/firebase';
 
 const ROLES: { value: UserRole; label: string; icon: string; desc: string }[] = [
-  { value: 'admin', label: 'Admin', icon: 'shield-checkmark', desc: 'Create & manage a school' },
-  { value: 'teacher', label: 'Teacher', icon: 'school', desc: 'Join an existing school' },
-  { value: 'student', label: 'Student', icon: 'person', desc: 'Join your school class' },
+  { value: 'teacher', label: 'Teacher', icon: 'school', desc: 'Manage classes & content' },
+  { value: 'student', label: 'Student', icon: 'person', desc: 'Access your class' },
   { value: 'parent', label: 'Parent', icon: 'people', desc: 'Track your children' },
 ];
 
@@ -45,10 +39,6 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [schoolId, setSchoolId] = useState('');
-  // Admin-only: new school name
-  const [schoolName, setSchoolName] = useState('');
-  const [curriculum, setCurriculum] = useState<'CBC' | 'IGCSE' | '8-4-4' | 'A-Level'>('A-Level');
 
   const handleRegister = async () => {
     if (!displayName.trim() || !email.trim() || !password) {
@@ -65,28 +55,7 @@ export default function RegisterScreen() {
     }
 
     try {
-      let finalSchoolId = schoolId.trim();
-
-      // Admin creates a new school
-      if (role === 'admin') {
-        if (!schoolName.trim()) {
-          Alert.alert('Validation', 'Please enter a school name.');
-          return;
-        }
-        const schoolRef = await addDoc(collection(db, 'schools'), {
-          name: schoolName.trim(),
-          curriculum,
-          subjects: [],
-          active: true,
-          createdAt: Date.now(),
-        });
-        finalSchoolId = schoolRef.id;
-      } else if (!finalSchoolId) {
-        Alert.alert('Validation', 'Please enter your School ID (get this from your admin).');
-        return;
-      }
-
-      await register(email.trim(), password, displayName.trim(), role, finalSchoolId);
+      await register(email.trim(), password, displayName.trim(), role);
       router.replace('/(main)/dashboard');
     } catch (err: any) {
       Alert.alert('Registration Failed', err.message ?? 'Something went wrong.');
@@ -98,7 +67,7 @@ export default function RegisterScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>NafAcademy</Text>
+          <Text style={styles.title}>{SCHOOL_NAME}</Text>
           <Text style={styles.subtitle}>Choose your role</Text>
 
           {ROLES.map((r) => (
@@ -155,7 +124,7 @@ export default function RegisterScreen() {
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>NafAcademy</Text>
+          <Text style={styles.title}>{SCHOOL_NAME}</Text>
           <Text style={styles.subtitle}>
             Register as {role.charAt(0).toUpperCase() + role.slice(1)}
           </Text>
@@ -192,54 +161,6 @@ export default function RegisterScreen() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
-
-          {/* Admin creates a school */}
-          {role === 'admin' && (
-            <>
-              <Text style={styles.sectionLabel}>Create Your School</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="School Name"
-                placeholderTextColor={COLORS.textSecondary}
-                value={schoolName}
-                onChangeText={setSchoolName}
-              />
-              <Text style={styles.fieldLabel}>Curriculum</Text>
-              <View style={styles.curriculumRow}>
-                {(['A-Level', '8-4-4', 'CBC', 'IGCSE'] as const).map((c) => (
-                  <TouchableOpacity
-                    key={c}
-                    style={[styles.currPill, curriculum === c && styles.currPillActive]}
-                    onPress={() => setCurriculum(c)}
-                  >
-                    <Text
-                      style={[
-                        styles.currPillText,
-                        curriculum === c && styles.currPillTextActive,
-                      ]}
-                    >
-                      {c}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* Non-admin joins a school */}
-          {role !== 'admin' && (
-            <>
-              <Text style={styles.sectionLabel}>Join a School</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="School ID (get from your admin)"
-                placeholderTextColor={COLORS.textSecondary}
-                autoCapitalize="none"
-                value={schoolId}
-                onChangeText={setSchoolId}
-              />
-            </>
-          )}
 
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnDisabled]}
@@ -331,33 +252,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 12,
   },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: 6,
-  },
-  curriculumRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  currPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  currPillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  currPillText: { fontSize: 13, fontWeight: '500', color: COLORS.textSecondary },
-  currPillTextActive: { color: '#fff' },
   btn: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,

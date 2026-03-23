@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// NafAcademy – Login Screen
+// Nabisunsa Girls HS – Login Screen
 // ──────────────────────────────────────────────
 import { useState } from 'react';
 import {
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { COLORS } from '@/constants';
+import { COLORS, SCHOOL_NAME } from '@/constants';
 
 export default function LoginScreen() {
   const { signIn, loading } = useAuth();
@@ -42,8 +42,8 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>NafAcademy</Text>
-        <Text style={styles.subtitle}>Sign in to your school</Text>
+        <Text style={styles.title}>{SCHOOL_NAME}</Text>
+        <Text style={styles.subtitle}>Sign in to continue</Text>
 
         <TextInput
           style={styles.input}
