@@ -42,3 +42,15 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 export default app;
+
+/**
+ * Secondary Firebase app used exclusively by admin to create user
+ * accounts without signing out the current session.
+ */
+let _secondaryApp: ReturnType<typeof initializeApp> | null = null;
+export function getSecondaryApp() {
+  if (!_secondaryApp) {
+    _secondaryApp = initializeApp(firebaseConfig, 'secondary');
+  }
+  return _secondaryApp;
+}

@@ -22,6 +22,8 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { getSecondaryApp } from './firebase';
+import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
 import { SCHOOL_ID, SCHOOL_NAME } from '@/constants';
 import type {
   AppUser,
@@ -40,6 +42,10 @@ import type {
   ClassRoom,
   Subject,
   Topic,
+  Announcement,
+  TimetableEntry,
+  FeeRecord,
+  FeePayment,
 } from '@/types';
 
 // ── Generic helpers ────────────────────────────
@@ -99,6 +105,22 @@ export const setUser = (uid: string, data: Omit<AppUser, 'uid'>) =>
 
 export const updateUser = (uid: string, data: Partial<AppUser>) =>
   updateDoc(doc(db, 'users', uid), data);
+
+/** Admin creates a new user without signing out the current session */
+export async function adminCreateUser(
+  email: string,
+  password: string,
+  profile: Omit<AppUser, 'uid'>
+): Promise<string> {
+  const secondaryApp = getSecondaryApp();
+  const secondaryAuth = getAuth(secondaryApp);
+  const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+  const uid = cred.user.uid;
+  await setDoc(doc(db, 'users', uid), { ...profile, uid });
+  // Sign out of the secondary app so it doesn't hold a session
+  await fbSignOut(secondaryAuth);
+  return uid;
+}
 
 export const getUsersBySchool = (schoolId: string) =>
   queryCollection<AppUser>(
@@ -281,6 +303,24 @@ export async function createMark(data: Omit<Mark, 'id'>): Promise<string> {
 export async function bulkCreateMarks(marks: Omit<Mark, 'id'>[]): Promise<void> {
   const promises = marks.map((m) => addDoc(collection(db, 'marks'), m));
   await Promise.all(promises);
+}
+
+export const getMarksBySubjectTermExam = (
+  schoolId: string,
+  subjectId: string,
+  termId: string,
+  examType: Mark['examType'],
+) =>
+  queryCollection<Mark>(
+    'marks',
+    where('schoolId', '==', schoolId),
+    where('subjectId', '==', subjectId),
+    where('termId', '==', termId),
+    where('examType', '==', examType),
+  );
+
+export async function updateMark(markId: string, data: Partial<Omit<Mark, 'id'>>): Promise<void> {
+  await updateDoc(doc(db, 'marks', markId), data);
 }
 
 // ── Video lesson helpers ───────────────────────
@@ -568,6 +608,114 @@ export async function addProjectFile(
     data
   );
   return ref.id;
+}
+
+// ── Timetable ──────────────────────────────────
+
+export const getTimetableByClass = (schoolId: string, classId: string) =>
+  queryCollection<TimetableEntry>(
+    'timetable',
+    where('schoolId', '==', schoolId),
+    where('classId', '==', classId),
+    orderBy('day'),
+    orderBy('startTime')
+  );
+
+export async function createTimetableEntry(
+  data: Omit<TimetableEntry, 'id'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'timetable'), data);
+  return ref.id;
+}
+
+export async function deleteTimetableEntry(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'timetable', id));
+}
+
+// ── Fee Tracking ───────────────────────────────
+
+export const getFeesByStudent = (studentId: string) =>
+  queryCollection<FeeRecord>(
+    'fees',
+    where('studentId', '==', studentId),
+    orderBy('createdAt', 'desc')
+  );
+
+export const getFeesBySchool = (schoolId: string) =>
+  queryCollection<FeeRecord>(
+    'fees',
+    where('schoolId', '==', schoolId),
+    orderBy('createdAt', 'desc')
+  );
+
+export const getFeesBySchoolAndTerm = (schoolId: string, termId: string) =>
+  queryCollection<FeeRecord>(
+    'fees',
+    where('schoolId', '==', schoolId),
+    where('termId', '==', termId),
+    orderBy('createdAt', 'desc')
+  );
+
+export async function createFeeRecord(
+  data: Omit<FeeRecord, 'id'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'fees'), data);
+  return ref.id;
+}
+
+export async function updateFeeRecord(
+  id: string,
+  data: Partial<FeeRecord>
+): Promise<void> {
+  await updateDoc(doc(db, 'fees', id), data);
+}
+
+export async function addFeePayment(
+  feeId: string,
+  data: Omit<FeePayment, 'id'>,
+  newAmountPaid: number,
+  newStatus: FeeRecord['status']
+): Promise<string> {
+  const ref = await addDoc(collection(db, `fees/${feeId}/payments`), data);
+  await updateDoc(doc(db, 'fees', feeId), {
+    amountPaid: newAmountPaid,
+    status: newStatus,
+  });
+  return ref.id;
+}
+
+export const getFeePayments = (feeId: string) =>
+  queryCollection<FeePayment>(
+    `fees/${feeId}/payments`,
+    orderBy('paidAt', 'desc')
+  );
+
+// ── Announcements ──────────────────────────────
+
+/** Real-time listener for announcements (newest first) */
+export function onAnnouncements(
+  schoolId: string,
+  cb: (items: Announcement[]) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, 'announcements'),
+    where('schoolId', '==', schoolId),
+    orderBy('createdAt', 'desc')
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement)));
+  });
+}
+
+export async function createAnnouncement(
+  data: Omit<Announcement, 'id'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'announcements'), data);
+  return ref.id;
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'announcements', id));
 }
 
 // ── School bootstrap ───────────────────────────

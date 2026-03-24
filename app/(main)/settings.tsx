@@ -27,9 +27,11 @@ import {
   getSubjects,
   createSubject,
   getUsersBySchool,
+  adminCreateUser,
+  updateUser,
 } from '@/services/firestore';
-import { COLORS } from '@/constants';
-import type { School, Term, ClassRoom, Subject, AppUser } from '@/types';
+import { COLORS, SCHOOL_ID } from '@/constants';
+import type { School, Term, ClassRoom, Subject, AppUser, UserRole } from '@/types';
 
 type Tab = 'school' | 'terms' | 'classes' | 'subjects' | 'users';
 
@@ -47,6 +49,17 @@ export default function SettingsScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState<Subject['category']>('other');
+
+  // Add User modal state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('student');
+  const [newUserClassId, setNewUserClassId] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserChildIds, setNewUserChildIds] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!schoolId) { setLoading(false); return; }
@@ -107,6 +120,52 @@ export default function SettingsScreen() {
       Alert.alert('Error', 'Failed to add item');
     }
   }, [tab, newName, newCategory, schoolId, refresh]);
+
+  const handleCreateUser = useCallback(async () => {
+    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword) {
+      Alert.alert('Validation', 'Name, email and password are required.');
+      return;
+    }
+    if (newUserPassword.length < 6) {
+      Alert.alert('Validation', 'Password must be at least 6 characters.');
+      return;
+    }
+    setCreatingUser(true);
+    try {
+      const profile: Omit<AppUser, 'uid'> = {
+        email: newUserEmail.trim().toLowerCase(),
+        displayName: newUserName.trim(),
+        role: newUserRole,
+        schoolId: SCHOOL_ID,
+        createdAt: Date.now(),
+        active: true,
+      };
+      if (newUserRole === 'student' && newUserClassId) {
+        (profile as any).classId = newUserClassId;
+      }
+      if (newUserRole === 'parent' && newUserChildIds.trim()) {
+        (profile as any).childIds = newUserChildIds.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      if (newUserPhone.trim()) {
+        (profile as any).phone = newUserPhone.trim();
+      }
+      await adminCreateUser(newUserEmail.trim().toLowerCase(), newUserPassword, profile);
+      Alert.alert('Success', `${newUserRole} account created for ${newUserName.trim()}`);
+      setShowUserModal(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserRole('student');
+      setNewUserClassId('');
+      setNewUserPhone('');
+      setNewUserChildIds('');
+      refresh();
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Failed to create user');
+    } finally {
+      setCreatingUser(false);
+    }
+  }, [newUserName, newUserEmail, newUserPassword, newUserRole, newUserClassId, newUserPhone, newUserChildIds, refresh]);
 
   const roleCounts = {
     admin: users.filter((u) => u.role === 'admin').length,
@@ -276,7 +335,14 @@ export default function SettingsScreen() {
                   ))}
                 </View>
               </View>
-              <Text style={[styles.sectionTitle, { marginTop: 16 }]}>All Users ({users.length})</Text>
+
+              <View style={[styles.sectionHeader, { marginTop: 16 }]}>
+                <Text style={styles.sectionTitle}>All Users ({users.length})</Text>
+                <Pressable style={styles.addBtn} onPress={() => setShowUserModal(true)}>
+                  <Ionicons name="person-add" size={18} color="#fff" />
+                  <Text style={styles.addBtnText}>Add User</Text>
+                </Pressable>
+              </View>
               {users.map((u) => (
                 <View key={u.uid} style={styles.listItem}>
                   <View style={[styles.smallAvatar, {
@@ -336,6 +402,114 @@ export default function SettingsScreen() {
                 </Pressable>
               </View>
             </View>
+          </View>
+        </Modal>
+
+        {/* Add User Modal */}
+        <Modal visible={showUserModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <ScrollView style={{ maxHeight: '85%', width: '90%' }} contentContainerStyle={{ flexGrow: 1 }}>
+              <View style={[styles.modal, { width: '100%' }]}>
+                <Text style={styles.modalTitle}>Create User Account</Text>
+
+                {/* Role selector */}
+                <Text style={styles.fieldLabel}>Role</Text>
+                <View style={[styles.categoryRow, { marginBottom: 12, marginTop: 4 }]}>
+                  {(['student', 'teacher', 'parent', 'admin'] as const).map((r) => (
+                    <Pressable
+                      key={r}
+                      style={[styles.catPill, newUserRole === r && styles.catPillActive]}
+                      onPress={() => setNewUserRole(r)}
+                    >
+                      <Text style={[styles.catPillText, newUserRole === r && styles.catPillTextActive]}>
+                        {r.charAt(0).toUpperCase() + r.slice(1)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Full name"
+                  value={newUserName}
+                  onChangeText={setNewUserName}
+                  placeholderTextColor={COLORS.textSecondary}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Email address"
+                  value={newUserEmail}
+                  onChangeText={setNewUserEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholderTextColor={COLORS.textSecondary}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Password (min 6 chars)"
+                  value={newUserPassword}
+                  onChangeText={setNewUserPassword}
+                  secureTextEntry
+                  placeholderTextColor={COLORS.textSecondary}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Phone (optional)"
+                  value={newUserPhone}
+                  onChangeText={setNewUserPhone}
+                  keyboardType="phone-pad"
+                  placeholderTextColor={COLORS.textSecondary}
+                />
+
+                {/* Student-specific: class picker */}
+                {newUserRole === 'student' && classes.length > 0 && (
+                  <>
+                    <Text style={styles.fieldLabel}>Class</Text>
+                    <View style={[styles.categoryRow, { marginBottom: 12, marginTop: 4 }]}>
+                      {classes.map((c) => (
+                        <Pressable
+                          key={c.id}
+                          style={[styles.catPill, newUserClassId === c.id && styles.catPillActive]}
+                          onPress={() => setNewUserClassId(c.id)}
+                        >
+                          <Text style={[styles.catPillText, newUserClassId === c.id && styles.catPillTextActive]}>
+                            {c.name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {/* Parent-specific: child IDs */}
+                {newUserRole === 'parent' && (
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Child student emails (comma-separated)"
+                    value={newUserChildIds}
+                    onChangeText={setNewUserChildIds}
+                    placeholderTextColor={COLORS.textSecondary}
+                  />
+                )}
+
+                <View style={[styles.modalActions, { marginTop: 8 }]}>
+                  <Pressable style={styles.cancelBtn} onPress={() => setShowUserModal(false)}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.saveBtn, creatingUser && { opacity: 0.5 }]}
+                    onPress={handleCreateUser}
+                    disabled={creatingUser}
+                  >
+                    {creatingUser ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Create Account</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </Modal>
       </View>

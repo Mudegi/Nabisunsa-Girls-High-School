@@ -293,6 +293,83 @@ export interface ProjectFile {
   createdAt: number;
 }
 
+// ── Timetable ──────────────────────────────────
+
+/** Days of the week used in the timetable */
+export type Weekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
+
+/** A single timetable slot (/timetable/{entryId}) */
+export interface TimetableEntry {
+  id: string;
+  schoolId: string;
+  classId: string;
+  subjectId: string;
+  teacherId?: string;
+  teacherName?: string;
+  day: Weekday;
+  /** Start time in 'HH:mm' 24h format, e.g. '08:00' */
+  startTime: string;
+  /** End time in 'HH:mm' 24h format, e.g. '08:40' */
+  endTime: string;
+  /** Room / venue (optional) */
+  room?: string;
+  createdAt: number;
+}
+
+// ── Fee Tracking ───────────────────────────────
+
+export type FeeStatus = 'unpaid' | 'partial' | 'paid';
+
+/** Fee record assigned to a student (/fees/{feeId}) */
+export interface FeeRecord {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  studentName: string;
+  termId: string;
+  /** Total amount due in UGX */
+  amount: number;
+  /** Total paid so far */
+  amountPaid: number;
+  status: FeeStatus;
+  /** Description / category, e.g. 'Tuition', 'Boarding' */
+  description: string;
+  dueDate: number;
+  createdBy: string;
+  createdAt: number;
+}
+
+/** Individual payment against a fee (/fees/{feeId}/payments/{paymentId}) */
+export interface FeePayment {
+  id: string;
+  feeId: string;
+  amount: number;
+  /** Payment method, e.g. 'cash', 'mobile_money', 'bank' */
+  method: string;
+  reference?: string;
+  note?: string;
+  recordedBy: string;
+  recordedByName: string;
+  paidAt: number;
+}
+
+// ── Announcements ──────────────────────────────
+
+/** School-wide announcement (/announcements/{announcementId}) */
+export interface Announcement {
+  id: string;
+  schoolId: string;
+  title: string;
+  body: string;
+  /** Which roles can see this announcement (empty = everyone) */
+  audience: UserRole[];
+  /** Pin to top of feed */
+  pinned?: boolean;
+  createdBy: string;
+  createdByName: string;
+  createdAt: number;
+}
+
 // ── Downloads ──────────────────────────────────
 
 /** Tracked offline download */

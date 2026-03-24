@@ -164,36 +164,29 @@ service cloud.firestore {
     }
 
     // ════════════════════════════════════════════
-    //  /terms/{termId}
+    //  /schools/{schoolId}/terms/{termId}
+    //  /schools/{schoolId}/classes/{classId}
+    //  /schools/{schoolId}/subjects/{subjectId}
+    //  /schools/{schoolId}/subjects/{subjectId}/topics/{topicId}
     // ════════════════════════════════════════════
-    match /terms/{termId} {
-      allow read: if isSignedIn() && sameSchool(resource.data.schoolId);
-      allow create: if isRole('admin')
-        && request.resource.data.schoolId == userDoc().schoolId;
-      allow update: if isRole('admin') && sameSchool(resource.data.schoolId);
-      allow delete: if isRole('admin') && sameSchool(resource.data.schoolId);
+    match /schools/{schoolId}/terms/{termId} {
+      allow read: if isSignedIn() && sameSchool(schoolId);
+      allow write: if isRole('admin') && sameSchool(schoolId);
     }
 
-    // ════════════════════════════════════════════
-    //  /classes/{classId}
-    // ════════════════════════════════════════════
-    match /classes/{classId} {
-      allow read: if isSignedIn() && sameSchool(resource.data.schoolId);
-      allow create: if isAnyRole(['admin', 'teacher'])
-        && request.resource.data.schoolId == userDoc().schoolId;
-      allow update: if isAnyRole(['admin', 'teacher']) && sameSchool(resource.data.schoolId);
-      allow delete: if isRole('admin') && sameSchool(resource.data.schoolId);
+    match /schools/{schoolId}/classes/{classId} {
+      allow read: if isSignedIn() && sameSchool(schoolId);
+      allow write: if isAnyRole(['admin', 'teacher']) && sameSchool(schoolId);
     }
 
-    // ════════════════════════════════════════════
-    //  /subjects/{subjectId}
-    // ════════════════════════════════════════════
-    match /subjects/{subjectId} {
-      allow read: if isSignedIn() && sameSchool(resource.data.schoolId);
-      allow create: if isAnyRole(['admin', 'teacher'])
-        && request.resource.data.schoolId == userDoc().schoolId;
-      allow update: if isAnyRole(['admin', 'teacher']) && sameSchool(resource.data.schoolId);
-      allow delete: if isRole('admin') && sameSchool(resource.data.schoolId);
+    match /schools/{schoolId}/subjects/{subjectId} {
+      allow read: if isSignedIn() && sameSchool(schoolId);
+      allow write: if isAnyRole(['admin', 'teacher']) && sameSchool(schoolId);
+    }
+
+    match /schools/{schoolId}/subjects/{subjectId}/topics/{topicId} {
+      allow read: if isSignedIn() && sameSchool(schoolId);
+      allow write: if isAnyRole(['admin', 'teacher']) && sameSchool(schoolId);
     }
 
     // ════════════════════════════════════════════
@@ -266,6 +259,58 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isSignedIn();
       allow delete: if isSignedIn();
+    }
+
+    // ════════════════════════════════════════════
+    //  /timetable/{entryId}
+    // ════════════════════════════════════════════
+    match /timetable/{entryId} {
+      allow read: if isSignedIn() && sameSchool(resource.data.schoolId);
+      allow create: if isAnyRole(['admin', 'teacher'])
+        && request.resource.data.schoolId == userDoc().schoolId;
+      allow update: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId);
+      allow delete: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  /announcements/{announcementId}
+    // ════════════════════════════════════════════
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn() && sameSchool(resource.data.schoolId);
+      allow create: if isAnyRole(['admin', 'teacher'])
+        && request.resource.data.schoolId == userDoc().schoolId;
+      allow update: if isAnyRole(['admin', 'teacher'])
+        && sameSchool(resource.data.schoolId);
+      allow delete: if isRole('admin')
+        && sameSchool(resource.data.schoolId);
+    }
+
+    // ════════════════════════════════════════════
+    //  /fees/{feeId}
+    // ════════════════════════════════════════════
+    match /fees/{feeId} {
+      // Admins see all fees in their school
+      allow read: if isRole('admin') && sameSchool(resource.data.schoolId);
+      // Teachers can read fees in their school
+      allow read: if isRole('teacher') && sameSchool(resource.data.schoolId);
+      // Students see only their own fees
+      allow read: if isRole('student') && resource.data.studentId == request.auth.uid;
+      // Parents see their child's fees
+      allow read: if isParentOf(resource.data.studentId);
+
+      allow create: if isRole('admin')
+        && request.resource.data.schoolId == userDoc().schoolId;
+      allow update: if isRole('admin') && sameSchool(resource.data.schoolId);
+      allow delete: if isRole('admin') && sameSchool(resource.data.schoolId);
+
+      // Payment sub-collection
+      match /payments/{paymentId} {
+        allow read: if isSignedIn();
+        allow create: if isRole('admin');
+        allow delete: if isRole('admin');
+      }
     }
 
     // ════════════════════════════════════════════
