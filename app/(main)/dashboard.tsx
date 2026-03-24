@@ -50,7 +50,7 @@ export default function DashboardScreen() {
 
   // Fetch data
   useEffect(() => {
-    if (!profile || !schoolId) { setLoading(false); return; }
+    if (!profile?.uid || !schoolId) { setLoading(false); return; }
     setLoading(true);
 
     const promises: Promise<void>[] = [];
@@ -82,7 +82,7 @@ export default function DashboardScreen() {
 
   // Real-time unread notifications count
   useEffect(() => {
-    if (!profile) return;
+    if (!profile?.uid) return;
     const unsub = onUserNotifications(profile.uid, (notifs) => {
       setUnreadNotifs(notifs.filter((n) => !n.read).length);
     });

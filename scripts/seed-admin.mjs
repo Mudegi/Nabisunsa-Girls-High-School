@@ -49,21 +49,17 @@ async function main() {
     }
   }
 
-  // Write / overwrite the Firestore profile
+  // Write / overwrite the Firestore profile (always update to ensure uid field exists)
   const ref = doc(db, 'users', uid);
-  const existing = await getDoc(ref);
-  if (existing.exists()) {
-    console.log('ℹ Firestore profile already exists – skipping write.');
-  } else {
-    await setDoc(ref, {
-      email: EMAIL,
-      displayName: DISPLAY,
-      role: 'admin',
-      schoolId: SCHOOL_ID,
-      createdAt: Date.now(),
-    });
-    console.log('✔ Firestore profile written.');
-  }
+  await setDoc(ref, {
+    uid,
+    email: EMAIL,
+    displayName: DISPLAY,
+    role: 'admin',
+    schoolId: SCHOOL_ID,
+    createdAt: Date.now(),
+  });
+  console.log('✔ Firestore profile written.');
 
   // Also ensure the school doc exists
   const schoolRef = doc(db, 'schools', SCHOOL_ID);

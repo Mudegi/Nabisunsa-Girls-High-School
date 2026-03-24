@@ -88,8 +88,11 @@ export function onDocument<T = DocumentData>(
 
 // ── User helpers ───────────────────────────────
 
-export const getUser = (uid: string) =>
-  getDocument<AppUser>('users', uid);
+export async function getUser(uid: string): Promise<AppUser | null> {
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  return { uid, id: snap.id, ...snap.data() } as AppUser;
+}
 
 export const setUser = (uid: string, data: Omit<AppUser, 'uid'>) =>
   setDoc(doc(db, 'users', uid), { ...data, uid });
