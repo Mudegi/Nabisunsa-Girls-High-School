@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// Nabisunsa Girls HS – Registration Screen
+// Nabisunsa Girls' Secondary School – Registration Screen
 // ──────────────────────────────────────────────
 import { useState } from 'react';
 import {

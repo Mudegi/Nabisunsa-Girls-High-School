@@ -1,11 +1,11 @@
 // ──────────────────────────────────────────────
-// Nabisunsa Girls High School – App-wide constants
+// Nabisunsa Girls' Secondary School – App-wide constants
 // ──────────────────────────────────────────────
 import { SidebarItem } from '@/types';
 
 /** Hard-coded single-school identity */
 export const SCHOOL_ID = 'nabisunsa';
-export const SCHOOL_NAME = 'Nabisunsa Girls High School';
+export const SCHOOL_NAME = "Nabisunsa Girls' Secondary School";
 
 /** Brand colours */
 export const COLORS = {

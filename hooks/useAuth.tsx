@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// Nabisunsa Girls HS – useAuth hook (RBAC)
+// Nabisunsa Girls' Secondary School – useAuth hook (RBAC)
 // ──────────────────────────────────────────────
 import { useEffect, useState, useCallback, useMemo, createContext, useContext } from 'react';
 import {

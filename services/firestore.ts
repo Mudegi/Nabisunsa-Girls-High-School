@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// Nabisunsa Girls HS – Firestore helpers
+// Nabisunsa Girls' Secondary School – Firestore helpers
 // ──────────────────────────────────────────────
 import {
   collection,

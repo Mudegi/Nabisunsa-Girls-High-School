@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// Nabisunsa Girls HS – Login Screen
+// Nabisunsa Girls' Secondary School – Login Screen
 // ──────────────────────────────────────────────
 import { useState } from 'react';
 import {
@@ -84,12 +84,7 @@ export default function LoginScreen() {
           <Text style={styles.linkText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.push('/(auth)/register')}
-          style={styles.linkRow}
-        >
-          <Text style={styles.linkText}>Don't have an account? Register</Text>
-        </TouchableOpacity>
+
       </View>
     </KeyboardAvoidingView>
   );

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// Nabisunsa Girls HS – Root Layout
+// Nabisunsa Girls' Secondary School – Root Layout
 // ──────────────────────────────────────────────
 import { useEffect } from 'react';
 import { Slot } from 'expo-router';
