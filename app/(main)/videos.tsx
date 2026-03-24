@@ -26,7 +26,7 @@ export default function VideosScreen() {
   const [showCreate, setShowCreate] = useState(false);
 
   const loadLessons = () => {
-    if (!schoolId) return;
+    if (!schoolId) { setLoading(false); return; }
     setLoading(true);
     getVideoLessonsBySchool(schoolId)
       .then(setLessons)

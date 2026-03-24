@@ -89,7 +89,7 @@ export default function CareerPathWorkspace({ marks: propMarks, level, studentId
   useEffect(() => {
     if (propMarks) return;
     const uid = studentId ?? profile?.uid;
-    if (!uid) return;
+    if (!uid) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
       try {

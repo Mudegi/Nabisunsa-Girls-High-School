@@ -49,21 +49,26 @@ export default function SettingsScreen() {
   const [newCategory, setNewCategory] = useState<Subject['category']>('other');
 
   const refresh = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId) { setLoading(false); return; }
     setLoading(true);
-    const [s, t, c, sub, u] = await Promise.all([
-      getSchool(schoolId),
-      getTerms(schoolId),
-      getClasses(schoolId),
-      getSubjects(schoolId),
-      getUsersBySchool(schoolId),
-    ]);
-    setSchool(s);
-    setTerms(t);
-    setClasses(c);
-    setSubjects(sub);
-    setUsers(u);
-    setLoading(false);
+    try {
+      const [s, t, c, sub, u] = await Promise.all([
+        getSchool(schoolId),
+        getTerms(schoolId),
+        getClasses(schoolId),
+        getSubjects(schoolId),
+        getUsersBySchool(schoolId),
+      ]);
+      setSchool(s);
+      setTerms(t);
+      setClasses(c);
+      setSubjects(sub);
+      setUsers(u);
+    } catch (err) {
+      console.warn('Settings load error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [schoolId]);
 
   useEffect(() => { refresh(); }, [refresh]);

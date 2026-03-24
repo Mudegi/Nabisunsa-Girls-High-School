@@ -47,7 +47,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile) return;
+    if (!profile) { setLoading(false); return; }
     const unsub = onUserNotifications(profile.uid, (notifs) => {
       setNotifications(notifs);
       setLoading(false);

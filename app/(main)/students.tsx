@@ -34,7 +34,7 @@ export default function StudentsScreen() {
 
   // Load students and classes
   useEffect(() => {
-    if (!schoolId) return;
+    if (!schoolId) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
       getUsersByRole(schoolId, 'student'),
@@ -43,8 +43,7 @@ export default function StudentsScreen() {
       setStudents(s);
       setFiltered(s);
       setClasses(c);
-      setLoading(false);
-    });
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [schoolId]);
 
   // Filter by search + class
