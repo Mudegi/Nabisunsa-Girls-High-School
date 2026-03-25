@@ -65,24 +65,20 @@ export default function SettingsScreen() {
   const refresh = useCallback(async () => {
     if (!schoolId) { setLoading(false); return; }
     setLoading(true);
-    try {
-      const [s, t, c, sub, u] = await Promise.all([
-        getSchool(schoolId),
-        getTerms(schoolId),
-        getClasses(schoolId),
-        getSubjects(schoolId),
-        getUsersBySchool(schoolId),
-      ]);
-      setSchool(s);
-      setTerms(t);
-      setClasses(c);
-      setSubjects(sub);
-      setUsers(u);
-    } catch (err) {
-      console.warn('Settings load error:', err);
-    } finally {
-      setLoading(false);
-    }
+    // Load each resource independently so one failure doesn't block others
+    const results = await Promise.allSettled([
+      getSchool(schoolId),
+      getTerms(schoolId),
+      getClasses(schoolId),
+      getSubjects(schoolId),
+      getUsersBySchool(schoolId),
+    ]);
+    if (results[0].status === 'fulfilled') setSchool(results[0].value);
+    if (results[1].status === 'fulfilled') setTerms(results[1].value);
+    if (results[2].status === 'fulfilled') setClasses(results[2].value);
+    if (results[3].status === 'fulfilled') setSubjects(results[3].value);
+    if (results[4].status === 'fulfilled') setUsers(results[4].value);
+    setLoading(false);
   }, [schoolId]);
 
   useEffect(() => { refresh(); }, [refresh]);
