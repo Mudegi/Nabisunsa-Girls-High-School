@@ -129,13 +129,32 @@ export interface Grade {
   points: number;
 }
 
-/** Career path suggestion */
+/** Career path suggestion (O-Level → A-Level combo recommendations) */
 export interface CareerSuggestion {
   aLevelCombination: string[];
+  /** Combo code e.g. "PCM", "MEG" */
+  comboCode?: string;
   universityCourses: string[];
+  /** Number of university courses this combo leads to */
+  universityCourseCount?: number;
   confidence: 'high' | 'medium' | 'low';
   /** Average percentage across the subjects that drive this suggestion */
   avgPercentage: number;
+}
+
+/** A-Level university course match */
+export interface UniversityRecommendation {
+  universityName: string;
+  universityShort: string;
+  universityType: 'public' | 'private';
+  location: string;
+  course: string;
+  faculty: string;
+  duration: string;
+  studentWeight: number;
+  requiredWeight: number;
+  weightMargin: number;
+  confidence: 'high' | 'medium' | 'low';
 }
 
 /** Full result returned by calculateCareerPath */
@@ -150,8 +169,18 @@ export interface CareerResult {
   scienceAvgPct: number;
   /** Arts/humanities average percentage */
   artsAvgPct: number;
-  /** Sorted suggestions */
+  /** Sorted suggestions (O-Level: combo recommendations) */
   suggestions: CareerSuggestion[];
+
+  // ── A-Level specific fields ──
+  /** Detected A-Level combination code (e.g. "MEG") */
+  detectedCombo?: string;
+  /** Detected combination full name (e.g. "Mathematics, Economics, Geography") */
+  detectedComboName?: string;
+  /** UACE weight = sum of 3 principal subject weights (max 18) */
+  uaceWeight?: number;
+  /** University course matches for A-Level students */
+  universityMatches?: UniversityRecommendation[];
 }
 
 /** Video lesson document (/videoLessons/{lessonId}) */

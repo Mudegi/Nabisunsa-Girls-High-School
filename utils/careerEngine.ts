@@ -1,13 +1,21 @@
 // ──────────────────────────────────────────────
-// NafAcademy – Career Engine  (v2)
+// NafAcademy – Career Engine  (v3)
 // ──────────────────────────────────────────────
 // O-Level : Best-8 aggregation → science % check
 //           → suggest A-Level combos (PCM/PCB/BCM…)
-// A-Level : University weighting system → suggest
-//           degree courses (Engineering, Law, …)
+//           → preview university courses per combo
+// A-Level : UACE weight calculation → match against
+//           specific Ugandan universities & courses
 // ──────────────────────────────────────────────
 import { EA_GRADE_SCALE } from '@/constants';
-import type { Mark, Grade, CareerSuggestion, CareerResult } from '@/types';
+import type { Mark, Grade, CareerSuggestion, CareerResult, UniversityRecommendation } from '@/types';
+import {
+  matchUniversityCourses,
+  getCoursesForCombo,
+  pctToALevelGrade,
+  detectCombination,
+  type UniversityMatch,
+} from './ugandaUniversityData';
 
 // ═══════════════════════════════════════════════
 //  Grade conversion helpers
@@ -78,6 +86,7 @@ function isScience(subjectId: string): boolean {
 // ═══════════════════════════════════════════════
 
 interface ComboRule {
+  code: string;         // e.g. "PCM"
   name: string;
   required: string[]; // student must have ≥ grade C
   courses: string[];
@@ -86,6 +95,7 @@ interface ComboRule {
 
 const O_LEVEL_COMBOS: ComboRule[] = [
   {
+    code: 'PCM',
     name: 'PCM (Physics, Chemistry, Mathematics)',
     required: ['physics', 'chemistry', 'mathematics'],
     stream: 'science',
@@ -98,6 +108,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'PCB',
     name: 'PCB (Physics, Chemistry, Biology)',
     required: ['physics', 'chemistry', 'biology'],
     stream: 'science',
@@ -110,6 +121,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'BCM',
     name: 'BCM (Biology, Chemistry, Mathematics)',
     required: ['biology', 'chemistry', 'mathematics'],
     stream: 'science',
@@ -121,6 +133,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'MEG',
     name: 'MEG (Mathematics, Economics, Geography)',
     required: ['mathematics', 'economics', 'geography'],
     stream: 'mixed',
@@ -133,6 +146,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'HEG',
     name: 'HEG (History, Economics, Geography)',
     required: ['history', 'economics', 'geography'],
     stream: 'arts',
@@ -144,6 +158,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'HEL',
     name: 'HEL (History, Economics, Literature)',
     required: ['history', 'economics', 'literature'],
     stream: 'arts',
@@ -155,6 +170,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'HED',
     name: 'HED (History, Economics, Divinity/CRE)',
     required: ['history', 'economics', 'cre'],
     stream: 'arts',
@@ -165,6 +181,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
     ],
   },
   {
+    code: 'KCA',
     name: 'KCA (Kiswahili, CRE, Agriculture)',
     required: ['kiswahili', 'cre', 'agriculture'],
     stream: 'arts',
@@ -176,80 +193,7 @@ const O_LEVEL_COMBOS: ComboRule[] = [
   },
 ];
 
-// ═══════════════════════════════════════════════
-//  A-Level university weighting rules
-// ═══════════════════════════════════════════════
-
-interface UniWeightRule {
-  course: string;
-  /** Subject IDs whose scores are weighted. Order = weight priority. */
-  subjects: string[];
-  /** Minimum weighted score (out of 100) to suggest */
-  minWeighted: number;
-}
-
-const A_LEVEL_UNI_RULES: UniWeightRule[] = [
-  {
-    course: 'Medicine & Surgery',
-    subjects: ['biology', 'chemistry', 'physics', 'mathematics'],
-    minWeighted: 65,
-  },
-  {
-    course: 'Engineering (All branches)',
-    subjects: ['mathematics', 'physics', 'chemistry'],
-    minWeighted: 60,
-  },
-  {
-    course: 'Computer Science',
-    subjects: ['mathematics', 'physics', 'computer_science'],
-    minWeighted: 55,
-  },
-  {
-    course: 'Law (LLB)',
-    subjects: ['history', 'economics', 'english', 'literature'],
-    minWeighted: 55,
-  },
-  {
-    course: 'Pharmacy',
-    subjects: ['chemistry', 'biology', 'physics'],
-    minWeighted: 60,
-  },
-  {
-    course: 'Architecture',
-    subjects: ['mathematics', 'physics', 'art'],
-    minWeighted: 55,
-  },
-  {
-    course: 'Economics & Statistics',
-    subjects: ['mathematics', 'economics', 'geography'],
-    minWeighted: 55,
-  },
-  {
-    course: 'Business Administration',
-    subjects: ['economics', 'mathematics', 'commerce', 'english'],
-    minWeighted: 50,
-  },
-  {
-    course: 'Education (Arts)',
-    subjects: ['history', 'literature', 'english', 'kiswahili'],
-    minWeighted: 45,
-  },
-  {
-    course: 'Education (Sciences)',
-    subjects: ['mathematics', 'physics', 'chemistry', 'biology'],
-    minWeighted: 45,
-  },
-  {
-    course: 'Journalism & Mass Communication',
-    subjects: ['english', 'literature', 'history', 'kiswahili'],
-    minWeighted: 50,
-  },
-  {
-    course: 'Agriculture & Veterinary Sciences',
-    subjects: ['biology', 'chemistry', 'agriculture', 'mathematics'],
-    minWeighted: 50,
-  },
-];
+// (A-Level university rules are now in ugandaUniversityData.ts)
 
 // ═══════════════════════════════════════════════
 //  Core calculator
@@ -336,7 +280,9 @@ function oLevelPath(marks: Mark[]): CareerResult {
 
     suggestions.push({
       aLevelCombination: [rule.name],
+      comboCode: rule.code,
       universityCourses: rule.courses,
+      universityCourseCount: getCoursesForCombo(rule.code).length,
       confidence,
       avgPercentage: Math.round(reqAvg * 10) / 10,
     });
@@ -358,7 +304,7 @@ function oLevelPath(marks: Mark[]): CareerResult {
   };
 }
 
-// ── A-Level pathway (university weighting) ─────
+// ── A-Level pathway (Uganda university matching) ─────
 
 function aLevelPath(marks: Mark[]): CareerResult {
   const allGrades = marksToGrades(marks);
@@ -367,49 +313,63 @@ function aLevelPath(marks: Mark[]): CareerResult {
   const sciAvg = avgPct([...best.values()], (g) => isScience(g.subject));
   const artsAvg = avgPct([...best.values()], (g) => !isScience(g.subject));
 
-  // Weighted aggregate: sum of (3-subject best points) — lower is better
   const sortedGrades = [...best.values()].sort(
     (a, b) => a.points - b.points || b.percentage - a.percentage
   );
-  const top3Points = sortedGrades.slice(0, 3).reduce((s, g) => s + g.points, 0);
 
-  const suggestions: CareerSuggestion[] = [];
-
-  for (const rule of A_LEVEL_UNI_RULES) {
-    // Compute weighted average: earlier subjects get higher weight
-    let weightedSum = 0;
-    let weightTotal = 0;
-    let matched = 0;
-
-    rule.subjects.forEach((subj, idx) => {
-      const g = best.get(subj);
-      if (g) {
-        const weight = rule.subjects.length - idx; // first subject = highest weight
-        weightedSum += g.percentage * weight;
-        weightTotal += weight;
-        matched++;
-      }
-    });
-
-    // Must have at least 2 matching subjects
-    if (matched < 2 || weightTotal === 0) continue;
-
-    const weightedPct = weightedSum / weightTotal;
-    if (weightedPct < rule.minWeighted) continue;
-
-    let confidence: CareerSuggestion['confidence'];
-    if (weightedPct >= 80) confidence = 'high';
-    else if (weightedPct >= 65) confidence = 'medium';
-    else confidence = 'low';
-
-    suggestions.push({
-      aLevelCombination: rule.subjects.map((s) => s.replace(/_/g, ' ')),
-      universityCourses: [rule.course],
-      confidence,
-      avgPercentage: Math.round(weightedPct * 10) / 10,
-    });
+  // Build subjectId → percentage map for the university matcher
+  const subjectScores = new Map<string, number>();
+  for (const [subj, g] of best.entries()) {
+    subjectScores.set(subj, g.percentage);
   }
 
+  // Run the Uganda university matching engine
+  const { combo, weight, matches } = matchUniversityCourses(subjectScores);
+
+  // Convert UniversityMatch[] → UniversityRecommendation[]
+  const universityMatches: UniversityRecommendation[] = matches.map((m) => ({
+    universityName: m.university.name,
+    universityShort: m.university.shortName,
+    universityType: m.university.type,
+    location: m.university.location,
+    course: m.course,
+    faculty: m.faculty,
+    duration: m.duration,
+    studentWeight: m.studentWeight,
+    requiredWeight: m.requiredWeight,
+    weightMargin: m.weightMargin,
+    confidence: m.confidence,
+  }));
+
+  // Also build legacy suggestions array (grouped by university) for backward compat
+  const suggestionMap = new Map<string, CareerSuggestion>();
+  for (const m of matches) {
+    const key = m.university.shortName;
+    const existing = suggestionMap.get(key);
+    if (existing) {
+      existing.universityCourses.push(m.course);
+      // Keep the best confidence
+      if (m.confidence === 'high' || existing.confidence === 'low') {
+        existing.confidence = m.confidence;
+      }
+    } else {
+      suggestionMap.set(key, {
+        aLevelCombination: combo ? [combo.name] : [],
+        comboCode: combo?.code,
+        universityCourses: [m.course],
+        confidence: m.confidence,
+        avgPercentage: combo
+          ? Math.round(
+              (combo.subjects.reduce((s, sub) => s + (subjectScores.get(sub) ?? 0), 0) /
+                combo.subjects.length) *
+                10
+            ) / 10
+          : 0,
+      });
+    }
+  }
+
+  const suggestions = [...suggestionMap.values()];
   const order = { high: 0, medium: 1, low: 2 };
   suggestions.sort(
     (a, b) => order[a.confidence] - order[b.confidence] || b.avgPercentage - a.avgPercentage
@@ -418,10 +378,14 @@ function aLevelPath(marks: Mark[]): CareerResult {
   return {
     level: 'a-level',
     grades: sortedGrades,
-    aggregateScore: top3Points,
+    aggregateScore: weight, // UACE weight
     scienceAvgPct: sciAvg,
     artsAvgPct: artsAvg,
     suggestions,
+    detectedCombo: combo?.code,
+    detectedComboName: combo?.name,
+    uaceWeight: weight,
+    universityMatches,
   };
 }
 
