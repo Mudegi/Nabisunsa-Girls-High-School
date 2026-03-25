@@ -16,6 +16,8 @@ export interface AppUser {
   childIds?: string[];
   /** Student's class (e.g. "S3A") */
   classId?: string;
+  /** Student registration number (used as login identifier for students) */
+  regNumber?: string;
   /** Phone number (used for parent linking) */
   phone?: string;
   photoURL?: string;

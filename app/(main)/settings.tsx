@@ -54,6 +54,7 @@ export default function SettingsScreen() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRegNumber, setNewUserRegNumber] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('student');
   const [newUserClassId, setNewUserClassId] = useState('');
@@ -122,26 +123,51 @@ export default function SettingsScreen() {
   }, [tab, newName, newCategory, schoolId, refresh]);
 
   const handleCreateUser = useCallback(async () => {
-    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword) {
-      Alert.alert('Validation', 'Name, email and password are required.');
+    if (!newUserName.trim()) {
+      Alert.alert('Validation', 'Name is required.');
       return;
     }
-    if (newUserPassword.length < 6) {
-      Alert.alert('Validation', 'Password must be at least 6 characters.');
+
+    // For students: require reg number, auto-generate email
+    // For others: require email
+    let email = newUserEmail.trim().toLowerCase();
+    if (newUserRole === 'student') {
+      if (!newUserRegNumber.trim()) {
+        Alert.alert('Validation', 'Registration number is required for students.');
+        return;
+      }
+      if (!email) {
+        // Auto-generate email from reg number
+        email = `${newUserRegNumber.trim().replace(/\s+/g, '').toLowerCase()}@nabisunsa.app`;
+      }
+    } else if (!email) {
+      Alert.alert('Validation', 'Email is required.');
       return;
     }
+
+    const password = newUserPassword || newUserRegNumber.trim() || '';
+    if (password.length < 6) {
+      Alert.alert('Validation', 'Password must be at least 6 characters. For students, the registration number is used as default password.');
+      return;
+    }
+
     setCreatingUser(true);
     try {
       const profile: Omit<AppUser, 'uid'> = {
-        email: newUserEmail.trim().toLowerCase(),
+        email,
         displayName: newUserName.trim(),
         role: newUserRole,
         schoolId: SCHOOL_ID,
         createdAt: Date.now(),
         active: true,
       };
-      if (newUserRole === 'student' && newUserClassId) {
-        (profile as any).classId = newUserClassId;
+      if (newUserRole === 'student') {
+        if (newUserRegNumber.trim()) {
+          (profile as any).regNumber = newUserRegNumber.trim();
+        }
+        if (newUserClassId) {
+          (profile as any).classId = newUserClassId;
+        }
       }
       if (newUserRole === 'parent' && newUserChildIds.trim()) {
         (profile as any).childIds = newUserChildIds.split(',').map(s => s.trim()).filter(Boolean);
@@ -149,11 +175,15 @@ export default function SettingsScreen() {
       if (newUserPhone.trim()) {
         (profile as any).phone = newUserPhone.trim();
       }
-      await adminCreateUser(newUserEmail.trim().toLowerCase(), newUserPassword, profile);
-      Alert.alert('Success', `${newUserRole} account created for ${newUserName.trim()}`);
+      await adminCreateUser(email, password, profile);
+      const loginInfo = newUserRole === 'student'
+        ? `Login: ${email} / Password: ${password}`
+        : `Login: ${email}`;
+      Alert.alert('Success', `${newUserRole} account created for ${newUserName.trim()}\n\n${loginInfo}`);
       setShowUserModal(false);
       setNewUserName('');
       setNewUserEmail('');
+      setNewUserRegNumber('');
       setNewUserPassword('');
       setNewUserRole('student');
       setNewUserClassId('');
@@ -165,7 +195,7 @@ export default function SettingsScreen() {
     } finally {
       setCreatingUser(false);
     }
-  }, [newUserName, newUserEmail, newUserPassword, newUserRole, newUserClassId, newUserPhone, newUserChildIds, refresh]);
+  }, [newUserName, newUserEmail, newUserRegNumber, newUserPassword, newUserRole, newUserClassId, newUserPhone, newUserChildIds, refresh]);
 
   const roleCounts = {
     admin: users.filter((u) => u.role === 'admin').length,
@@ -354,7 +384,9 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.listItemLeft}>
                     <Text style={styles.listItemName}>{u.displayName}</Text>
-                    <Text style={styles.listItemMeta}>{u.role} • {u.email}</Text>
+                    <Text style={styles.listItemMeta}>
+                      {u.role}{u.regNumber ? ` • ${u.regNumber}` : ''} • {u.email}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -435,9 +467,22 @@ export default function SettingsScreen() {
                   onChangeText={setNewUserName}
                   placeholderTextColor={COLORS.textSecondary}
                 />
+
+                {/* Student: Registration number (required) */}
+                {newUserRole === 'student' && (
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Registration number (required)"
+                    value={newUserRegNumber}
+                    onChangeText={setNewUserRegNumber}
+                    autoCapitalize="characters"
+                    placeholderTextColor={COLORS.textSecondary}
+                  />
+                )}
+
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Email address"
+                  placeholder={newUserRole === 'student' ? 'Email (optional — auto-generated from reg no.)' : 'Email address'}
                   value={newUserEmail}
                   onChangeText={setNewUserEmail}
                   autoCapitalize="none"
@@ -446,7 +491,7 @@ export default function SettingsScreen() {
                 />
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Password (min 6 chars)"
+                  placeholder={newUserRole === 'student' ? 'Password (optional — defaults to reg no.)' : 'Password (min 6 chars)'}
                   value={newUserPassword}
                   onChangeText={setNewUserPassword}
                   secureTextEntry

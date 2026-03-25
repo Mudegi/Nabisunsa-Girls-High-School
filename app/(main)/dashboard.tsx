@@ -77,7 +77,9 @@ export default function DashboardScreen() {
       );
     }
 
-    Promise.all(promises).then(() => setLoading(false));
+    Promise.all(promises)
+      .catch((err) => console.warn('Dashboard load error:', err))
+      .finally(() => setLoading(false));
   }, [profile, schoolId, studentId]);
 
   // Real-time unread notifications count

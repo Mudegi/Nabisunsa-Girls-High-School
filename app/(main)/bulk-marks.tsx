@@ -86,8 +86,9 @@ function BulkMarksInner() {
       setClasses(c);
       setSubjects(s);
       setTerms(t);
-      setLoadingPickers(false);
-    });
+    })
+    .catch((err) => console.warn('Bulk marks picker load error:', err))
+    .finally(() => setLoadingPickers(false));
   }, []);
 
   // Load students & existing marks when selection changes

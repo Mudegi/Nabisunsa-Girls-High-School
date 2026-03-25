@@ -31,7 +31,7 @@ export default function NewChatPicker({ onConversationReady, onBack }: Props) {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    if (!schoolId) return;
+    if (!schoolId) { setLoading(false); return; }
     getUsersBySchool(schoolId).then((u) => {
       // Filter out self and only show relevant roles
       const eligible = u.filter((usr) => {
@@ -46,8 +46,9 @@ export default function NewChatPicker({ onConversationReady, onBack }: Props) {
       });
       setUsers(eligible);
       setFiltered(eligible);
-      setLoading(false);
-    });
+    })
+    .catch((err) => console.warn('Chat picker load error:', err))
+    .finally(() => setLoading(false));
   }, [schoolId, profile]);
 
   useEffect(() => {
